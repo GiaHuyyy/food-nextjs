@@ -71,8 +71,6 @@ body {
   }
 }
 
-@layer components {
-  a {
-    @apply text-red-700;
-  }
+@layer utilities {
+  
 }
