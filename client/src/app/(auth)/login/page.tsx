@@ -1,11 +1,11 @@
-import Link from "next/link";
 import React from "react";
+import LoginForm from "./login-form";
 
 export default function Login() {
   return (
     <>
-      <div>Login</div>
-      <Link href="/" >Home</Link>
+      <h1 className="text-xl font-semibold">Đăng nhập</h1>
+      <LoginForm />
     </>
   );
 }
