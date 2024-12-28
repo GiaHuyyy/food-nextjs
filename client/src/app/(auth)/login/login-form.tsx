@@ -9,14 +9,15 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { LoginBody, LoginBodyType } from "@/schemaValidations/auth.schema";
 import envConfig from "@/config";
-import { redirect } from "next/navigation";
+// import { redirect } from "next/navigation";
 
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
+import { useAppContext } from "@/app/AppProvider";
 
 export default function LoginForm() {
   const { toast } = useToast();
-
+  const { setSesstionToken } = useAppContext();
   // 1. Define your form.
   const form = useForm<LoginBodyType>({
     resolver: zodResolver(LoginBody),
@@ -28,27 +29,62 @@ export default function LoginForm() {
 
   // 2. Define a submit handler.
   async function onSubmit(values: LoginBodyType) {
-    const result = await fetch(`${envConfig.NEXT_PUBLIC_API_ENDPOINT}/auth/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(values),
-    }).then((res) => res.json());
+    try {
+      const result = await fetch(`${envConfig.NEXT_PUBLIC_API_ENDPOINT}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(values),
+      }).then(async (res) => {
+        const payload = await res.json();
+        const data = {
+          status: res.status,
+          payload,
+        };
+        if (!res.ok) {
+          throw data;
+        }
+        return data;
+      });
+      toast({
+        description: result.payload.message,
+      });
 
-    console.log(result);
-    if (result.statusCode !== 422) {
-      toast({
-        description: result.message,
+      const resultFromNextServer = await fetch("/api/auth", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(result),
+      }).then(async (res) => {
+        const payload = await res.json();
+        const data = {
+          status: res.status,
+          payload,
+        };
+        if (!res.ok) {
+          throw data;
+        }
+        return data;
       });
-      redirect("/");
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Error !",
-        description: result.errors[0].message,
-        action: <ToastAction altText="Try again">Try again</ToastAction>,
-      });
+      setSesstionToken(resultFromNextServer.payload.data.token);
+      // redirect("/");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      const errors = error.payload.errors as { field: string; message: string }[];
+      const status = error.status as number;
+      if (status === 422) {
+        errors.forEach((error) => {
+          form.setError(error.field as "email" | "password", { type: "server", message: error.message });
+        });
+        toast({
+          variant: "destructive",
+          title: "Error !",
+          description: error.payload.message,
+          action: <ToastAction altText="Try again">Try again</ToastAction>,
+        });
+      }
     }
   }
   return (
