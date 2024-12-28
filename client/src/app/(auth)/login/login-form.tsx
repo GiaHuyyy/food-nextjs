@@ -8,15 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { LoginBody, LoginBodyType } from "@/schemaValidations/auth.schema";
-import envConfig from "@/config";
-// import { redirect } from "next/navigation";
 
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { useAppContext } from "@/app/AppProvider";
+import authApiRequest from "@/apiResquests/auth";
+import { useRouter } from "next/navigation";
 
 export default function LoginForm() {
   const { toast } = useToast();
+  const router = useRouter();
   const { setSesstionToken } = useAppContext();
   // 1. Define your form.
   const form = useForm<LoginBodyType>({
@@ -30,46 +31,17 @@ export default function LoginForm() {
   // 2. Define a submit handler.
   async function onSubmit(values: LoginBodyType) {
     try {
-      const result = await fetch(`${envConfig.NEXT_PUBLIC_API_ENDPOINT}/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(values),
-      }).then(async (res) => {
-        const payload = await res.json();
-        const data = {
-          status: res.status,
-          payload,
-        };
-        if (!res.ok) {
-          throw data;
-        }
-        return data;
-      });
+      const result = await authApiRequest.login(values);
+
       toast({
         description: result.payload.message,
       });
 
-      const resultFromNextServer = await fetch("/api/auth", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(result),
-      }).then(async (res) => {
-        const payload = await res.json();
-        const data = {
-          status: res.status,
-          payload,
-        };
-        if (!res.ok) {
-          throw data;
-        }
-        return data;
-      });
-      setSesstionToken(resultFromNextServer.payload.data.token);
-      // redirect("/");
+      await authApiRequest.auth({ sesstionToken: result.payload.data.token });
+
+      setSesstionToken(result.payload.data.token);
+
+      router.push("/me");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       const errors = error.payload.errors as { field: string; message: string }[];

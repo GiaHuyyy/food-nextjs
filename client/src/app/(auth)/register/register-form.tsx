@@ -8,15 +8,17 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { RegisterBody, RegisterBodyType } from "@/schemaValidations/auth.schema";
-import envConfig from "@/config";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
+import authApiRequest from "@/apiResquests/auth";
+import { useAppContext } from "@/app/AppProvider";
 
 export default function RegisterForm() {
   const { toast } = useToast();
-
+  const router = useRouter();
+  const { setSesstionToken } = useAppContext();
   // 1. Define your form.
   const form = useForm<RegisterBodyType>({
     resolver: zodResolver(RegisterBody),
@@ -30,27 +32,33 @@ export default function RegisterForm() {
 
   // 2. Define a submit handler.
   async function onSubmit(values: RegisterBodyType) {
-    const result = await fetch(`${envConfig.NEXT_PUBLIC_API_ENDPOINT}/auth/register`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(values),
-    }).then((res) => res.json());
+    try {
+      const result = await authApiRequest.resgister(values);
 
-    console.log(result);
-    if (result.statusCode !== 422) {
       toast({
-        description: result.message,
+        description: result.payload.message,
       });
-      redirect("/login");
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Error !",
-        description: result.errors[0].message,
-        action: <ToastAction altText="Try again">Try again</ToastAction>,
-      });
+
+      await authApiRequest.auth({ sesstionToken: result.payload.data.token });
+
+      setSesstionToken(result.payload.data.token);
+
+      router.push("/me");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      const errors = error.payload.errors as { field: string; message: string }[];
+      const status = error.status as number;
+      if (status === 422) {
+        errors.forEach((error) => {
+          form.setError(error.field as "email" | "password", { type: "server", message: error.message });
+        });
+        toast({
+          variant: "destructive",
+          title: "Error !",
+          description: error.payload.message,
+          action: <ToastAction altText="Try again">Try again</ToastAction>,
+        });
+      }
     }
   }
   return (
