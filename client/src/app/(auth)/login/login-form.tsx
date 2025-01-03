@@ -11,14 +11,12 @@ import { LoginBody, LoginBodyType } from "@/schemaValidations/auth.schema";
 
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
-import { useAppContext } from "@/app/AppProvider";
 import authApiRequest from "@/apiResquests/auth";
 import { useRouter } from "next/navigation";
 
 export default function LoginForm() {
   const { toast } = useToast();
   const router = useRouter();
-  const { setSesstionToken } = useAppContext();
   // 1. Define your form.
   const form = useForm<LoginBodyType>({
     resolver: zodResolver(LoginBody),
@@ -38,8 +36,6 @@ export default function LoginForm() {
       });
 
       await authApiRequest.auth({ sesstionToken: result.payload.data.token });
-
-      setSesstionToken(result.payload.data.token);
 
       router.push("/me");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

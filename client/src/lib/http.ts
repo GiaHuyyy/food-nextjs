@@ -1,6 +1,7 @@
 import envConfig from "@/config";
+import { LoginResType } from "@/schemaValidations/auth.schema";
 
-type CustomOptions = RequestInit & { baseUrl?: string };
+type CustomOptions = Omit<RequestInit, "method"> & { baseUrl?: string };
 
 class HttpError extends Error {
   status: number;
@@ -14,6 +15,23 @@ class HttpError extends Error {
   }
 }
 
+class SesstionToken {
+  private token = "";
+
+  set value(token: string) {
+    if (typeof window === "undefined") {
+      throw new Error("Không thể gọi hàm này ở phía server");
+    }
+    this.token = token;
+  }
+
+  get value() {
+    return this.token;
+  }
+}
+
+export const clientSesstionToken = new SesstionToken();
+
 const request = async <Response>(
   method: "GET" | "POST" | "PUT" | "DELETE",
   url: string,
@@ -22,6 +40,7 @@ const request = async <Response>(
   const body = options?.body ? JSON.stringify(options.body) : undefined;
   const baseHeaders = {
     "Content-Type": "application/json",
+    Authorization: clientSesstionToken.value ? `Bearer ${clientSesstionToken.value}` : "",
   };
 
   // Nếu không truyền baseUrl (hoặc baseUrl = undefined) thì lấy từ envConfig.NEXT_PUBLIC_API_ENDPOINT
@@ -44,11 +63,16 @@ const request = async <Response>(
 
   const payload: Response = await res.json();
   const data = { status: res.status, payload };
-  if (res.ok) {
-    return data;
-  } else {
+  if (!res.ok) {
     throw new HttpError(data);
   }
+
+  if (["/auth/login", "/auth/register"].includes(url)) {
+    clientSesstionToken.value = (payload as LoginResType).data.token;
+  } else if ("/auth/logout".includes(url)) {
+    clientSesstionToken.value = "";
+  }
+  return data;
 };
 
 const http = {
