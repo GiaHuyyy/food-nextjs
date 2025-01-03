@@ -10,12 +10,12 @@ import { Input } from "@/components/ui/input";
 import { RegisterBody, RegisterBodyType } from "@/schemaValidations/auth.schema";
 import { useRouter } from "next/navigation";
 
-import { useToast } from "@/hooks/use-toast";
-import { ToastAction } from "@/components/ui/toast";
+import { toast } from "@/hooks/use-toast";
 import authApiRequest from "@/apiResquests/auth";
+import { handleErrorApi } from "@/lib/utils";
 
 export default function RegisterForm() {
-  const { toast } = useToast();
+  const [loading, setLoading] = React.useState(false);
   const router = useRouter();
   // 1. Define your form.
   const form = useForm<RegisterBodyType>({
@@ -30,6 +30,8 @@ export default function RegisterForm() {
 
   // 2. Define a submit handler.
   async function onSubmit(values: RegisterBodyType) {
+    if (loading) return;
+    setLoading(true);
     try {
       const result = await authApiRequest.resgister(values);
 
@@ -40,21 +42,10 @@ export default function RegisterForm() {
       await authApiRequest.auth({ sesstionToken: result.payload.data.token });
 
       router.push("/me");
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
-      const errors = error.payload.errors as { field: string; message: string }[];
-      const status = error.status as number;
-      if (status === 422) {
-        errors.forEach((error) => {
-          form.setError(error.field as "email" | "password", { type: "server", message: error.message });
-        });
-        toast({
-          variant: "destructive",
-          title: "Error !",
-          description: error.payload.message,
-          action: <ToastAction altText="Try again">Try again</ToastAction>,
-        });
-      }
+      handleErrorApi({ error, setError: form.setError, duration: 2000 });
+    } finally {
+      setLoading(false);
     }
   }
   return (
