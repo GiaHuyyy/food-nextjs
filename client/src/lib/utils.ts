@@ -37,3 +37,10 @@ export const handleErrorApi = ({
     });
   }
 };
+
+/**
+ * Xóa đi ký tự "/" ở đầu path
+ */
+export const normalizePath = (path: string) => {
+  return path.startsWith("/") ? path.slice(1) : path;
+}
