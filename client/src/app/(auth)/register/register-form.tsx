@@ -39,7 +39,7 @@ export default function RegisterForm() {
         description: result.payload.message,
       });
 
-      await authApiRequest.auth({ sesstionToken: result.payload.data.token });
+      await authApiRequest.auth({ sessionToken: result.payload.data.token });
 
       router.push("/me");
     } catch (error: any) {

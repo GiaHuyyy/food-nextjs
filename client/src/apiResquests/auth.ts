@@ -5,20 +5,28 @@ import { MessageResType } from "@/schemaValidations/common.schema";
 const authApiRequest = {
   login: (body: LoginBodyType) => http.post<LoginResType>("/auth/login", body),
   resgister: (body: RegisterBodyType) => http.post<RegisterResType>("/auth/register", body),
-  auth: (body: { sesstionToken: string }) =>
+  auth: (body: { sessionToken: string }) =>
     http.post("/api/auth", body, {
       baseUrl: "",
     }),
-  logoutFromNextClientToNextServer: () =>
-    http.post<MessageResType>("/api/auth/logout", {}, {
-      baseUrl: "",
-    }),
-  logoutFromNextServerToServer: (sesstionToken: string) =>
-    http.post<MessageResType>("/auth/logout", {}, {
-      headers: {
-        Authorization: `Bearer ${sesstionToken}`,
-      },
-    }),
+  logoutFromNextClientToNextServer: (force?: boolean | undefined) =>
+    http.post<MessageResType>(
+      "/api/auth/logout",
+      { force },
+      {
+        baseUrl: "",
+      }
+    ),
+  logoutFromNextServerToServer: (sessionToken: string) =>
+    http.post<MessageResType>(
+      "/auth/logout",
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+        },
+      }
+    ),
 };
 
 export default authApiRequest;

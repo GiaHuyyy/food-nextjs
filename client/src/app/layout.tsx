@@ -7,8 +7,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 import Header from "@/components/header";
 
 import { Toaster } from "@/components/ui/toaster";
-import AppProvider from "./AppProvider";
 import { cookies } from "next/headers";
+import AppProvider from "./app-provider";
 
 const roboto = Roboto({
   subsets: ["vietnamese"],
@@ -28,14 +28,14 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const cookieStore = await cookies();
-  const sesstionToken = cookieStore.get("sesstionToken");
+  const sessionToken = cookieStore.get("sessionToken");
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={roboto.className}>
         <Toaster />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <Header />
-          <AppProvider initialSesstionToken={sesstionToken?.value}>
+          <AppProvider initialSessionToken={sessionToken?.value}>
             {children}
           </AppProvider>
         </ThemeProvider>

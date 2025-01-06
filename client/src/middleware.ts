@@ -7,12 +7,14 @@ const authPaths = ["/login", "/register"];
 // This function can be marked `async` if using `await` inside
 export function middleware(request: NextRequest) {
   const pathName = request.nextUrl.pathname;
-  const sesstionToken = request.cookies.get("sesstionToken");
+  const sessionToken = request.cookies.get("sessionToken");
 
   // Check private paths
-  if (privatePaths.includes(pathName) && !sesstionToken) {
+  if (privatePaths.includes(pathName) && !sessionToken) {
     return NextResponse.redirect(new URL("/login", request.url));
-  } else if (authPaths.includes(pathName) && sesstionToken) {
+  } 
+  
+  if (authPaths.includes(pathName) && sessionToken) {
     return NextResponse.redirect(new URL("/me", request.url));
   }
 

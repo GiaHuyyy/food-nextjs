@@ -1,10 +1,12 @@
 import envConfig from "@/config";
 import { LoginResType } from "@/schemaValidations/auth.schema";
 import { normalizePath } from "./utils";
+import { redirect } from "next/navigation";
 
 type CustomOptions = Omit<RequestInit, "method"> & { baseUrl?: string };
 
 const ENTITY_ERROR_STATUS = 422;
+const AUTHENTICATION_ERROR_STATUS = 401;
 
 type EntityErrorPayload = {
   message: string;
@@ -34,8 +36,12 @@ export class EntityError extends HttpError {
   }
 }
 
-class SesstionToken {
+class SessionToken {
   private token = "";
+
+  get value() {
+    return this.token;
+  }
 
   set value(token: string) {
     if (typeof window === "undefined") {
@@ -43,14 +49,11 @@ class SesstionToken {
     }
     this.token = token;
   }
-
-  get value() {
-    return this.token;
-  }
 }
 
-export const clientSesstionToken = new SesstionToken();
+export const clientSessionToken = new SessionToken();
 
+let clientLogoutRequest: null | Promise<any> = null;
 const request = async <Response>(
   method: "GET" | "POST" | "PUT" | "DELETE",
   url: string,
@@ -59,7 +62,7 @@ const request = async <Response>(
   const body = options?.body ? JSON.stringify(options.body) : undefined;
   const baseHeaders = {
     "Content-Type": "application/json",
-    Authorization: clientSesstionToken.value ? `Bearer ${clientSesstionToken.value}` : "",
+    Authorization: clientSessionToken.value ? `Bearer ${clientSessionToken.value}` : "",
   };
 
   // Nếu không truyền baseUrl (hoặc baseUrl = undefined) thì lấy từ envConfig.NEXT_PUBLIC_API_ENDPOINT
@@ -92,16 +95,37 @@ const request = async <Response>(
           payload: EntityErrorPayload;
         }
       );
+    } else if (res.status === AUTHENTICATION_ERROR_STATUS) {
+      if (typeof window !== "undefined") {
+        if (!clientLogoutRequest) {
+          clientLogoutRequest = fetch("/api/auth/logout", {
+            method: "POST",
+            body: JSON.stringify({ force: true }),
+            headers: {
+              ...baseHeaders,
+            },
+          });
+          await clientLogoutRequest;
+          alert("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại !");
+          clientSessionToken.value = "";
+          clientLogoutRequest = null;
+          location.href = "/login";
+        }
+      } else {
+        const sessionToken = (options?.headers as any)?.Authorization.split("Bearer ")[1];
+        redirect(`/logout?sessionToken=${sessionToken}`);
+      }
     } else {
       throw new HttpError(data);
     }
   }
+
   // Đảm bảo logic này chỉ chạy ở phía client (browser)
   if (typeof window !== "undefined") {
     if (["/auth/login", "/auth/register"].some((item) => item === normalizePath(url))) {
-      clientSesstionToken.value = (payload as LoginResType).data.token;
+      clientSessionToken.value = (payload as LoginResType).data.token;
     } else if ("/auth/logout" === normalizePath(url)) {
-      clientSesstionToken.value = "";
+      clientSessionToken.value = "";
     }
   }
   return data;

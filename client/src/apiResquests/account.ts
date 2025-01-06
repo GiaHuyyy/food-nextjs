@@ -3,10 +3,10 @@ import { AccountResType } from "@/schemaValidations/account.schema";
 
 const accountApiResquest = {
   // Gọi ở server
-  me: (sesstionToken: string) =>
+  me: (sessionToken: string) =>
     http.get<AccountResType>("/account/me", {
       headers: {
-        Authorization: `Bearer ${sesstionToken}`,
+        Authorization: `Bearer ${sessionToken}`,
       },
     }),
 

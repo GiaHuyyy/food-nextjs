@@ -2,19 +2,35 @@ import authApiRequest from "@/apiResquests/auth";
 import { HttpError } from "@/lib/http";
 import { cookies } from "next/headers";
 
-export async function POST() {
+export async function POST(request: Request) {
+  const res = await request.json();
+  const force = res.force as boolean | undefined;
+  if (force) {
+    // Xóa sessionToken khỏi cookie khi token hết hạn
+    return Response.json(
+      { message: "Token hết hạn, Đã đăng xuất !" },
+      {
+        status: 200,
+        // Xóa sessionToken khỏi cookie
+        headers: {
+          "Set-Cookie": `sessionToken=; Path=/; HttpOnly; Max-Age=0`,
+        },
+      }
+    );
+  }
+
   const cookieStore = await cookies();
-  const sesstionToken = cookieStore.get("sesstionToken");
-  if (!sesstionToken) {
-    return Response.json({ message: "Không nhận được sesstionToken" }, { status: 401 });
+  const sessionToken = cookieStore.get("sessionToken");
+  if (!sessionToken) {
+    return Response.json({ message: "Không nhận được sessionToken" }, { status: 401 });
   }
   try {
-    const result = await authApiRequest.logoutFromNextServerToServer(sesstionToken.value);
+    const result = await authApiRequest.logoutFromNextServerToServer(sessionToken.value);
     return Response.json(result.payload, {
       status: 200,
       headers: {
-        // Xóa sesstionToken khỏi cookie
-        "Set-Cookie": `sesstionToken=; Path=/; HttpOnly; Max-Age=0`,
+        // Xóa sessionToken khỏi cookie
+        "Set-Cookie": `sessionToken=; Path=/; HttpOnly; Max-Age=0`,
       },
     });
   } catch (error) {
